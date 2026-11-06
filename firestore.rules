@@ -1,0 +1,41 @@
+rules_version = '2';
+// Renal Ward Log — only confirmed emails on the "allowed" list can read or write.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function me() {
+      return request.auth.token.email.lower();
+    }
+    function member() {
+      return signedIn() && exists(/databases/$(database)/documents/allowed/$(me()));
+    }
+    function admin() {
+      return member() && get(/databases/$(database)/documents/allowed/$(me())).data.role == "admin";
+    }
+
+    // Team list: each person can check their own entry; only admins can see or change the list.
+    match /allowed/{email} {
+      allow read: if signedIn() && (email == me() || admin());
+      allow write: if admin();
+    }
+
+    // Patient files: whole team can read and edit; only admins can delete a file.
+    match /patients/{id} {
+      allow read, create, update: if member();
+      allow delete: if admin();
+    }
+
+    // Attached images
+    match /images/{id} {
+      allow read, create, delete: if member();
+    }
+
+    // Anything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
