@@ -800,7 +800,7 @@ async function delSel(ids,st){const ps=await loadMany(ids,st);for(const p of ps)
 let critDraft=null;
 function critView(){const box=el("section",{class:"panel"},el("div",{class:"topbar"},el("h2",{},"Critical values"),el("button",{class:"link",onclick:()=>{critDraft=null;view="home";render()}},"← Home")));
   const ad=isAdmin();if(!critDraft)critDraft=clone(critRules);const err=el("p",{class:"err",role:"alert"});
-  box.append(el("p",{class:"sub",style:"display:block"},"Critical = below Low, or at/above High. Only the latest result of each item is checked."+(ad?"":" Only the admin can change these.")));
+  box.append(el("p",{class:"sub",style:"display:block"},"Critical = below Low, or at/above High. Only the latest result of each item is checked."+(ad?"":" These limits are set by the department.")));
   const numCols=ALLCOLS.filter(([c])=>!TEXTCOLS.has(c)||c==="BP").map(([c])=>c);
   const group=(kind,title)=>{const rows=critDraft.filter(r=>(kind==="lab")===(r.k==="lab"));
     const tb=el("div",{class:"critrows"},rows.map(r=>{const name=kind==="lab"?inp(r.n,{placeholder:"Test name",dir:"ltr"}):sel(numCols.includes(r.n)?numCols:[r.n,...numCols],r.n);
@@ -1780,7 +1780,14 @@ function helpView(){const box=el("section",{class:"panel"},el("div",{class:"topb
     I("Tap a name","On the home screen opens that patient. Tap the consultant's title for all their patients."),
     I("‹ Prev / Next ›","Inside a file, moves through the ward list without going back."),
     I("Who entered it","Open any lab day, vitals day, plan item or HD session — the line at the top shows who added or edited it and when.")));
+  box.append(el("h3",{style:"margin-top:8px"},"Videos"),el("div",{class:"vlist"},VIDEOS.map(([f,t,m])=>{const v=el("div",{class:"vplay"});
+    const b=el("button",{type:"button",class:"small",onclick:()=>{if(v.firstChild){v.replaceChildren();b.textContent="▶ Watch";return}
+      v.replaceChildren(el("video",{src:"videos/"+f,controls:true,playsinline:true,preload:"metadata"}));b.textContent="Close"}},"▶ Watch");
+    return el("div",{class:"vrow"},el("div",{class:"vt"},el("b",{},t),el("span",{class:"hat"},m)),b,v)})));
   return box}
+const VIDEOS=[["1-getting-started.mp4","1 · Getting started and the home screen","≈2.5 min"],["2-adding-patients.mp4","2 · Adding patients — import and new patient","≈3 min"],
+  ["3-patient-file.mp4","3 · The patient file and the plan","≈2 min"],["4-daily-follow-up-hd.mp4","4 · Daily follow-up and dialysis","≈2 min"],
+  ["5-medications-discharge.mp4","5 · Medications and discharge","≈1.5 min"],["6-editing-menu.mp4","6 · Editing, the menu and saving","≈2 min"],["7-what-it-saves-you.mp4","What it saves you","1 min"]];
 window.startApp=function(){render()};
 window.appConvert=p=>{ensureIds(p,null);const d=flat(p);return{d,active:isActive(p),entry:dirOf(p,d)}};window.appUnflat=unflat;
 window.addEventListener("online",()=>finalizeCodes());

@@ -1,5 +1,5 @@
 // Nephrology Ward Log service worker: app works offline; updates arrive on next open.
-const CACHE = "nwl-v4";
+const CACHE = "nwl-v5";
 const SHELL = ["./", "index.html", "app.js", "firebase.js", "config.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-180.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
@@ -8,6 +8,7 @@ self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   // Firebase data/auth calls are handled by Firebase itself.
   if (/googleapis\.com$|firebaseio\.com$/.test(url.hostname) && !url.hostname.startsWith("fonts")) return;
+  if (url.pathname.includes("/videos/")) return; // videos stream straight from the site
   const isShell = url.origin === location.origin;
   const isLib = url.hostname === "www.gstatic.com" || url.hostname.startsWith("fonts.");
   if (isShell) { // network first, so new versions show up; cache when offline
