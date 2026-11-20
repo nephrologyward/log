@@ -1,5 +1,5 @@
 rules_version = '2';
-// Renal Ward Log — only confirmed emails on the "allowed" list can read or write.
+// Nephrology Ward Log — only confirmed emails on the "allowed" list can read or write.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -15,6 +15,10 @@ service cloud.firestore {
     function admin() {
       return member() && get(/databases/$(database)/documents/allowed/$(me())).data.role == "admin";
     }
+    // every write must carry the writer's own email
+    function byMe() {
+      return request.resource.data.by == me();
+    }
 
     // Team list: each person can check their own entry; only admins can see or change the list.
     match /allowed/{email} {
@@ -22,10 +26,41 @@ service cloud.firestore {
       allow write: if admin();
     }
 
-    // Patient files: whole team can read and edit; only admins can delete a file.
+    // Patient files: team reads and edits (each change signed with the editor's email).
+    // Removing a whole file is admin-only and goes through Recently deleted.
     match /patients/{id} {
-      allow read, create, update: if member();
+      allow read: if member();
+      allow create, update: if member() && byMe() && request.resource.data.d is map;
       allow delete: if admin();
+    }
+
+    // Edit history: everyone's changes are logged with their own email; nobody can edit or erase it.
+    match /history/{id} {
+      allow create: if member() && byMe();
+      allow read: if admin();
+      allow update, delete: if false;
+    }
+
+    // Recently deleted: anything anyone deletes lands here (signed); only admins restore or empty it.
+    match /trash/{id} {
+      allow read: if member();
+      allow create: if member() && byMe();
+      allow delete: if admin();
+      allow update: if false;
+    }
+
+    // Directory of all patients (small), patient-code counter, and settings.
+    match /meta/directory {
+      allow read, create, update: if member();
+    }
+    match /meta/counter {
+      allow read: if member();
+      allow create: if member() && request.resource.data.n is int;
+      allow update: if member() && request.resource.data.n == resource.data.n + 1;
+    }
+    match /meta/settings {
+      allow read: if member();
+      allow write: if admin() && byMe();
     }
 
     // Attached images
