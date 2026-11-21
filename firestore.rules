@@ -63,6 +63,11 @@ service cloud.firestore {
       allow write: if admin() && byMe();
     }
 
+    // Each person's own settings (tour seen, hints)
+    match /prefs/{email} {
+      allow read, write: if member() && email == me();
+    }
+
     // Attached images
     match /images/{id} {
       allow read, create, delete: if member();

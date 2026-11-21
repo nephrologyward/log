@@ -92,7 +92,7 @@ function setSync(text, cls) { const st = /^Offline/.test(text) ? "offline" : cls
 function showError(msg) { const n = document.getElementById("syncnote"); if (n) n.textContent = msg; }
 window.addEventListener("offline", () => setSync("Offline — changes saved on this phone", "warn"));
 window.addEventListener("online", () => setSync("Syncing…"));
-document.getElementById("signout").onclick = () => { unsubs.forEach(f => f()); unsubs = []; signOut(auth).then(() => location.reload()); };
+document.getElementById("signout").onclick = () => { stopAll(); try { Object.keys(localStorage).filter(k => k.startsWith("nwl-role:")).forEach(k => localStorage.removeItem(k)); } catch {} signOut(auth).then(() => location.reload()); };
 
 // ---------- sign-in screens ----------
 function loginScreen(msg = "") {
@@ -136,39 +136,58 @@ function notAllowedScreen(user) {
 }
 
 // ---------- start ----------
-async function start(user) {
-  const email = (user.email || "").toLowerCase();
-  let allowed;
-  try { allowed = await getDoc(doc(db, "allowed", email)); }
-  catch (e) { if (String(e.code).includes("permission")) return notAllowedScreen(user); screen(h("h2", {}, "Can't connect"), h("p", {}, "Check the internet connection, then reload.")); return; }
-  if (!allowed.exists()) return notAllowedScreen(user);
-  Store.email = email; Store.isAdmin = allowed.data().role === "admin";
+// Opens straight away from what this phone already has; the team check and the one-time data update run in the background.
+const LS = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} } };
+function stopAll() { unsubs.forEach(f => f()); unsubs = []; Store._hw = false; }
+function begin(email, role) {
+  Store.email = email; Store.isAdmin = role === "admin";
   document.getElementById("whoami").textContent = email;
   document.getElementById("userbar").hidden = false;
   document.getElementById("signout").hidden = false;
   document.getElementById("syncpill").hidden = false;
   setSync(navigator.onLine ? "Syncing…" : "Offline — changes saved on this phone", navigator.onLine ? "" : "warn");
-  try { const ds = await getDoc(dirRef()); if (!ds.exists()) { screen(h("p", { class: "sub" }, "Updating the data to the new format… (one time only)")); await migrate(); } }
-  catch (e) { if (navigator.onLine) showError("Couldn't update the data format (" + (e.code || "error") + "). Reload the app."); }
-  unsubs.forEach(f => f()); unsubs = [];
+  stopAll();
   unsubs.push(onSnapshot(dirRef(), s => window.onRemoteDir((s.exists() && s.data().p) || {}), () => {}));
   unsubs.push(onSnapshot(doc(db, "meta", "settings"), s => window.onRemoteSettings(s.exists() ? s.data() : null), () => {}));
   unsubs.push(onSnapshot(collection(db, "trash"), snap => {
     const list = snap.docs.map(d => ({ ...d.data(), id: d.id })).filter(x => x.kind);
     list.sort((a, b) => (b.ts || 0) - (a.ts || 0)); window.onRemoteTrash(list);
   }, () => {}));
-  if (Store.isAdmin) unsubs.push(onSnapshot(query(collection(db, "history"), orderBy("ts", "desc"), limit(500)), snap => {
-    window.onRemoteHistory(snap.docs.map(d => d.data()));
-  }, () => {}));
   let started = false;
   unsubs.push(onSnapshot(query(collection(db, "patients"), where("active", "==", true)), { includeMetadataChanges: true }, snap => {
     if (snap.metadata.hasPendingWrites) setSync(navigator.onLine ? "Saving…" : "Offline — changes saved on this phone", "warn");
     else if (snap.metadata.fromCache && !navigator.onLine) setSync("Offline", "warn");
-    else setSync("All saved", "ok");
+    else if (!snap.metadata.fromCache) setSync("All saved", "ok");
     const list = snap.docs.map(d => { const x = d.data(); return x.d ? { id: d.id, d: x.d } : { id: d.id, data: x.data }; });
     if (!started) { started = true; window.onRemotePatients(list); window.startApp(); }
     else if (snap.docChanges().length) window.onRemotePatients(list);
   }, err => { showError("Lost access to data (" + (err.code || "error") + "). Reload the app."); }));
+}
+Store.watchHistory = () => { if (Store._hw || !Store.isAdmin) return; Store._hw = true;
+  unsubs.push(onSnapshot(query(collection(db, "history"), orderBy("ts", "desc"), limit(500)), snap => window.onRemoteHistory(snap.docs.map(d => d.data())), () => { Store._hw = false; })); };
+Store.loadPrefs = async () => { try { const s = await getDoc(doc(db, "prefs", Store.email)); return s.exists() ? s.data() : null; } catch { return null; } };
+Store.savePrefs = x => { setDoc(doc(db, "prefs", Store.email), { ...x, by: Store.email }).catch(() => {}); };
+async function checkMigration() {
+  if (LS.get("nwl-migrated-v2")) return;
+  try { const ds = await getDoc(dirRef()); if (!ds.exists()) { await migrate(); location.reload(); return; } LS.set("nwl-migrated-v2", "1"); }
+  catch (e) { if (navigator.onLine) showError("Couldn't update the data format (" + (e.code || "error") + "). Reload the app."); }
+}
+async function start(user) {
+  const email = (user.email || "").toLowerCase();
+  const cached = LS.get("nwl-role:" + email);
+  if (cached) { begin(email, cached); checkMigration(); }
+  let allowed;
+  try { allowed = await getDoc(doc(db, "allowed", email)); }
+  catch (e) {
+    if (String(e.code).includes("permission")) { stopAll(); LS.set("nwl-role:" + email, null); return notAllowedScreen(user); }
+    if (!cached) screen(h("h2", {}, "Can't connect"), h("p", {}, "Check the internet connection, then reload."));
+    return;
+  }
+  if (!allowed.exists()) { stopAll(); LS.set("nwl-role:" + email, null); return notAllowedScreen(user); }
+  const role = allowed.data().role === "admin" ? "admin" : "member";
+  LS.set("nwl-role:" + email, role);
+  if (!cached) { await checkMigration(); begin(email, role); }
+  else if (role !== cached) location.reload();
 }
 
 onAuthStateChanged(auth, user => {
