@@ -12,6 +12,8 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preload" href="fonts/plexsans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=El+Messiri:wght@400;500;600;700&family=Rubik:wght@400;500;600&display=swap">
 <style>
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0}
@@ -481,6 +483,7 @@ header.brand h1{white-space:nowrap}
 .lpable{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .fhead2{display:flex!important;flex-direction:column;align-items:stretch!important;gap:4px!important;direction:ltr!important}
 .fhead2 .fname{font-size:1.3rem;line-height:1.3;text-align:start}
+.fhead2 .fname.ar{direction:rtl!important;text-align:right}
 .fhead2 .fmeta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:.88rem;color:var(--muted)}
 .fhead2 .floc{color:var(--ink);font-weight:500}
 .fhead2 .fout{color:var(--ink)}
@@ -542,6 +545,12 @@ body.sheet-open{overflow:hidden}
 button.clbtn{background:none;border:1px solid transparent;border-radius:10px;padding:6px 8px;margin:0 -6px;color:inherit;font:inherit;text-align:start;cursor:pointer;width:auto;align-self:flex-start;display:flex}
 button.clbtn:hover,button.clbtn:focus-visible{border-color:var(--line)}
 .clmark{color:var(--accent);font-size:.85rem}.clgo{color:var(--muted)}
+.longp{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+
+td.tapc{cursor:pointer}td.tapc:active{background:var(--line)}
+td.confc{cursor:pointer}
+.cfpick{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-radius:12px;font-size:1.1rem;border:1.5px solid var(--line);background:var(--paper);color:var(--ink)}
+.cfpick:active,.cfpick:hover{border-color:var(--accent)}
 .skel{display:flex;flex-direction:column;gap:12px;margin-top:6px}
 .sk{background:linear-gradient(90deg,var(--line) 0%,var(--paper) 50%,var(--line) 100%);background-size:200% 100%;animation:skm 1.2s linear infinite;border-radius:14px}
 .sk-bar{height:52px}.sk-bar2{height:44px}.sk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.sk-card{height:230px}.sk-wide{height:90px}

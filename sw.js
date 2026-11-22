@@ -1,7 +1,8 @@
 // Nephrology Ward Log service worker: app works offline; updates arrive on next open.
-const CACHE = "nwl-v7";
-const SHELL = ["./", "index.html", "app.js", "firebase.js", "config.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-180.png", "fonts/plexsans.woff2", "fonts/elmessiri.woff2", "fonts/rubik.woff2"];
-self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
+const CACHE = "nwl-v9";
+const SHELL = ["./", "index.html", "app.js", "firebase.js", "config.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-180.png"];
+const FONTS = ["fonts/plexsans.woff2", "fonts/elmessiri.woff2", "fonts/rubik.woff2"];
+self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL).then(() => Promise.all(FONTS.map(f => c.add(f).catch(() => {}))))).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
